@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import * as Yup from 'yup';
+import { FormHandles } from '@unform/core';
 
 import Header from '../../components/Header';
 
@@ -24,10 +26,9 @@ const Dashboard: React.FC = () => {
   const [editingFood, setEditingFood] = useState<IFoodPlate>({} as IFoodPlate);
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-
+  const formRef = useRef<FormHandles>(null);
   useEffect(() => {
     async function loadFoods(): Promise<void> {
-      // TODO LOAD FOODS
       const response = await api.get('/foods');
       setFoods(response.data);
     }
@@ -40,6 +41,12 @@ const Dashboard: React.FC = () => {
   ): Promise<void> {
     try {
       // TODO ADD A NEW FOOD PLATE TO THE API
+      const response = await api.post<IFoodPlate>('/foods', {
+        ...food,
+        available: true,
+      });
+
+      setFoods([...foods, response.data]);
     } catch (err) {
       console.log(err);
     }
@@ -48,11 +55,19 @@ const Dashboard: React.FC = () => {
   async function handleUpdateFood(
     food: Omit<IFoodPlate, 'id' | 'available'>,
   ): Promise<void> {
-    // TODO UPDATE A FOOD PLATE ON THE API
+    const response = await api.put(`/foods/${editingFood.id}`, {
+      id: editingFood.id,
+      available: editingFood.available,
+      ...food,
+    });
+    const foodIndex = foods.findIndex(f => f.id === editingFood.id);
+    foods[foodIndex] = response.data;
+    setFoods([...foods]);
   }
 
   async function handleDeleteFood(id: number): Promise<void> {
-    // TODO DELETE A FOOD PLATE FROM THE API
+    setFoods([...foods.filter(food => food.id !== id)]);
+    await api.delete(`/foods/${id}`);
   }
 
   function toggleModal(): void {
@@ -64,7 +79,8 @@ const Dashboard: React.FC = () => {
   }
 
   function handleEditFood(food: IFoodPlate): void {
-    // TODO SET THE CURRENT EDITING FOOD ID IN THE STATE
+    setEditingFood(food);
+    setEditModalOpen(true);
   }
 
   return (
@@ -93,7 +109,6 @@ const Dashboard: React.FC = () => {
             />
           ))}
       </FoodsContainer>
-      {JSON.stringify(foods)}
     </>
   );
 };
